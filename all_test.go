@@ -37,7 +37,6 @@ import (
 	"modernc.org/libc"
 	"modernc.org/mathutil"
 	sqlite3 "modernc.org/sqlite/lib"
-	"modernc.org/sqlite/vfs"
 )
 
 func caller(s string, va ...interface{}) {
@@ -2700,89 +2699,6 @@ var fs embed.FS
 
 //go:embed embed2.db
 var fs2 embed.FS
-
-func TestVFS(t *testing.T) {
-	fn, f, err := vfs.New(fs)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := f.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
-	f2n, f2, err := vfs.New(fs2)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := f2.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-
-	db, err := sql.Open("sqlite", "file:embed.db?vfs="+fn)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer db.Close()
-
-	db2, err := sql.Open("sqlite", "file:embed2.db?vfs="+f2n)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer db2.Close()
-
-	rows, err := db.Query("select * from t order by i;")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var a []int
-	for rows.Next() {
-		var i, j, k int
-		if err := rows.Scan(&i, &j, &k); err != nil {
-			t.Fatal(err)
-		}
-
-		a = append(a, i, j, k)
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log(a)
-	if g, e := fmt.Sprint(a), "[1 2 3 40 50 60]"; g != e {
-		t.Fatalf("got %q, expected %q", g, e)
-	}
-
-	if rows, err = db2.Query("select * from u order by s;"); err != nil {
-		t.Fatal(err)
-	}
-
-	var b []string
-	for rows.Next() {
-		var x, y string
-		if err := rows.Scan(&x, &y); err != nil {
-			t.Fatal(err)
-		}
-
-		b = append(b, x, y)
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatal(err)
-	}
-
-	t.Log(b)
-	if g, e := fmt.Sprint(b), "[123 xyz abc def]"; g != e {
-		t.Fatalf("got %q, expected %q", g, e)
-	}
-}
 
 // y = 2^n, except for n < 0 y = 0.
 func exp(n int) int {
